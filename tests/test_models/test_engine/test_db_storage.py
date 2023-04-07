@@ -1,54 +1,53 @@
 #!/usr/bin/python3
-
-import unittest
-import models
-from models.base_model import BaseModel, Base
-from models.user import User
-from models.review import Review
-from models.amenity import Amenity
+""" Module for testing db storage"""
 from models.state import State
-from models.place import Place
-from models.city import City
+from models.engine.db_storage import DBStorage
+import unittest
+import MySQLdb
+import pep8
 import os
-from sqlalchemy import Column, Integer, String, create_engine
-from sqlalchemy.orm import sessionmaker
 
 
-@unittest.skipIf(os.getenv('HBNB_TYPE_STORAGE') != 'db',
-                 "only testing db storage")
-class test_DBStorage(unittest.TestCase):
+class TestDBStorage(unittest.TestCase):
+    """a class to test db storage """
 
-    def testState(self):
-        state = State(name="Greg")
-        if state.id in models.storage.all():
-            self.assertTrue(state.name, "Greg")
+    @classmethod
+    def setUp(self):
+        """Set up MySQL"""
+        self.db = MySQLdb.connect(host="localhost",
+                                  port=3306,
+                                  user='hbnb_test',
+                                  passwd='hbnb_test_pwd',
+                                  db='hbnb_test_db',
+                                  charset='utf8')
+        self.cur = self.db.cursor()
+        self.storage = DBStorage()
+        self.storage.reload()
 
-    def testCity(self):
-        city = City(name="Afa")
-        if city.id in models.storage.all():
-            self.assertTrue(city.name, "Afa")
+    @classmethod
+    def tearDown(self):
+        """Tear down MySQL"""
+        self.cur.close()
+        self.db.close()
 
-    def testPlace(self):
-        place = Place(name="MyShoeBox", number_rooms=5)
-        if place.id in models.storage.all():
-            self.assertTrue(place.number_rooms, 5)
-            self.assertTrue(place.name, "MyShoeBox")
+    @unittest.skipIf(os.getenv('HBNB_TYPE_STORAGE') != 'db', 'db')
+    def test_pep8_DBStorage(self):
+        """test pep8 style"""
+        style = pep8.StyleGuide(quiet=True)
+        p = style.check_files(['models/engine/db_storage.py'])
+        self.assertEqual(p.total_errors, 0, "fix pep8")
 
-    def testUser(self):
-        user = User(name="Young_Jeezy")
-        if user.id in models.storage.all():
-            self.assertTrue(user.name, "Young_Jeezy")
+    @unittest.skipIf(os.getenv('HBNB_TYPE_STORAGE') != 'db', 'db')
+    def test_add(self):
+        """Test add method"""
+        self.cur.execute("""
+        INSERT INTO states (id, created_at, updated_at, name)
+        VALUES (1, '2017-11-10 00:53:19', '2017-11-10 00:53:19', "California")
+        """)
+        self.cur.execute('SELECT * FROM states')
+        rows = self.cur.fetchall()
+        self.assertEqual(len(rows), 1)
 
-    def testAmenity(self):
-        amenity = Amenity(name="Toilet")
-        if amenity.id in models.storage.all():
-            self.assertTrue(amenity.name, "Toilet")
 
-    def testReview(self):
-        review = Review(text="hello")
-        if review.id in models.storage.all():
-            self.assertTrue(review.text, "hello")
-
-    def teardown(self):
-        self.session.close()
-        self.session.rollback()
+if __name__ == "__main__":
+    unittest.main()

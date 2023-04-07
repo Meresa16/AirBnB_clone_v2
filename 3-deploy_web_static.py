@@ -1,55 +1,71 @@
 #!/usr/bin/python3
-from fabric.api import *
-import os
+""" Fabric script that creates and distributes an archive to web servers """
+
 from datetime import datetime
+import os.path
+from fabric.api import put, run, env, local
 
-env.hosts = ['35.231.59.48', '35.237.144.156']
-
-
-def deploy():
-    archive_path = do_pack()
-    if archive_path is None:
-        return False
-    return do_deploy(archive_path)
-
-
-def do_deploy(archive_path):
-    a_list = archive_path.split(".tgz")
-    archive_wo_ext = "".join(a_list)
-    b_list = archive_wo_ext.split("versions/")
-    archive_wo_ext_ver = "".join(b_list)
-    c_list = archive_path.split("versions/")
-    archive_wo_ver = "".join(c_list)
-    if archive_path:
-        put(archive_path, '/tmp/')
-        run("mkdir -p /data/web_static/releases/{}/".
-            format(archive_wo_ext_ver))
-        run("tar -zxf /tmp/{} -C /data/web_static/releases/{}/"
-            .format(archive_wo_ver, archive_wo_ext_ver))
-        run("rm -r /tmp/{}".format(archive_wo_ver))
-        run("mv /data/web_static/releases/{}/web_static/*\
-        /data/web_static/releases/{}/".format(archive_wo_ext_ver,
-                                              archive_wo_ext_ver))
-        run("rm -rf /data/web_static/releases/{}/web_static".
-            format(archive_wo_ext_ver))
-        run("rm -rf /data/web_static/current")
-        run("ln -s /data/web_static/releases/{}/ /data/web_static/current".
-            format(archive_wo_ext_ver))
-        print("New version deployed!")
-        return True
-    else:
-        return False
+env.hosts = ['44.210.69.40', '100.25.135.77']
 
 
 def do_pack():
-    try:
-        filepath = "versions/web_static_" + datetime.now().\
-                   strftime("%Y%m%d%H%M%S") + ".tgz"
-        local("mkdir -p versions")
-        local("tar -zcvf versions/web_static_$(date +%Y%m%d%H%M%S).tgz\
-        web_static")
-        print("web_static packed: {} -> {}".
-              format(filepath, os.path.getsize(filepath)))
-        return filepath
-    except:
+    """generates .tgz archive from the contents of the web_static folder"""
+    dt = datetime.utcnow()
+    file = "versions/web_static_{}{}{}{}{}{}.tgz".format(dt.year,
+                                                         dt.month,
+                                                         dt.day,
+                                                         dt.hour,
+                                                         dt.minute,
+                                                         dt.second)
+    if os.path.isdir("versions") is False:
+        if local("mkdir -p versions").failed is True:
+            return None
+    if local("tar -cvzf {} web_static".format(file)).failed is True:
         return None
+    return file
+
+
+def do_deploy(archive_path):
+    """
+    copy archive_path file from local to remote webservers
+    """
+    if os.path.isfile(archive_path) is False:
+        return False
+    file = archive_path.split("/")[-1]
+    name = file.split(".")[0]
+
+    if put(archive_path, "/tmp/{}".format(file)).failed is True:
+        return False
+    if run("sudo rm -rf /data/web_static/releases/{}/".
+           format(name)).failed is True:
+        return False
+    if run("sudo mkdir -p /data/web_static/releases/{}/".
+           format(name)).failed is True:
+        return False
+    if run("sudo tar -xzf /tmp/{} -C /data/web_static/releases/{}/".
+           format(file, name)).failed is True:
+        return False
+    if run("sudo rm /tmp/{}".format(file)).failed is True:
+        return False
+    if run("sudo mv /data/web_static/releases/{}/web_static/* "
+           "/data/web_static/releases/{}/".format(name, name)).failed is True:
+        return False
+    if run("sudo rm -rf /data/web_static/releases/{}/web_static".
+           format(name)).failed is True:
+        return False
+    if run("sudo rm -rf /data/web_static/current").failed is True:
+        return False
+    if run("sudo ln -s /data/web_static/releases/{}/ /data/web_static/current".
+           format(name)).failed is True:
+        return False
+    return True
+
+
+def deploy():
+    """
+    Fabric script that creates and distributes an archive to web servers
+    """
+    file = do_pack()
+    if file is None:
+        return False
+    return do_deploy(file)

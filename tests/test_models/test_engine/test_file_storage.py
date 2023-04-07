@@ -1,126 +1,129 @@
 #!/usr/bin/python3
-'''
-    Testing the file_storage module.
-'''
+"""Test for file storage module"""
 
-import os
-import time
-import json
+
 import unittest
 from models.base_model import BaseModel
+from models.user import User
 from models.state import State
+from models.place import Place
+from models.city import City
+from models.amenity import Amenity
+from models.review import Review
 from models.engine.file_storage import FileStorage
+import models
+import os
 
 
-class testFileStorage(unittest.TestCase):
-    '''
-        Testing the FileStorage class
-    '''
-
+class Test_file_storage(unittest.TestCase):
+    """"Testing file storage engine class"""
     def setUp(self):
-        '''
-            Initializing classes
-        '''
+        """Test setup environment"""
+        self.model = BaseModel()
         self.storage = FileStorage()
-        self.my_model = BaseModel()
 
     def tearDown(self):
-        '''
-            Cleaning up.
-        '''
-
+        """Test cleanup"""
         try:
             os.remove("file.json")
-        except FileNotFoundError:
+        except IOError:
             pass
-
-    def test_all_return_type(self):
-        '''
-            Tests the data type of the return value of the all method.
-        '''
-        storage_all = self.storage.all()
-        self.assertIsInstance(storage_all, dict)
-
-    def test_delete(self):
-        new_state = State()
-        new_state.name = "California***********"
-        fs = FileStorage()
-        fs.new(new_state)
-        fs.save()
-        self.assertTrue(os.path.isfile("file.json"))
-        with open("file.json", encoding="UTF8") as fd:
-            content = fd.read()
-        flag = 1
-        if new_state.id in content:
-            flag = 0
-        self.assertTrue(flag == 0)
-        fs.delete(new_state)
-        fs.save()
-        with open("file.json", encoding="UTF8") as fd:
-            content = fd.read()
-        flag = 0
-        if new_state.id in content:
-            flag = 1
-        self.assertTrue(flag == 0)
-
-    def test_new_method(self):
-        '''
-            Tests that the new method sets the right key and value pair
-            in the FileStorage.__object attribute
-        '''
-        self.storage.new(self.my_model)
-        key = str(self.my_model.__class__.__name__ + "." + self.my_model.id)
-        self.assertTrue(key in self.storage._FileStorage__objects)
-
-    def test_objects_value_type(self):
-        '''
-            Tests that the type of value contained in the FileStorage.__object
-            is of type obj.__class__.__name__
-        '''
-        self.storage.new(self.my_model)
-        key = str(self.my_model.__class__.__name__ + "." + self.my_model.id)
-        val = self.storage._FileStorage__objects[key]
-        self.assertIsInstance(self.my_model, type(val))
-
-    def test_save_file_exists(self):
-        '''
-            Tests that a file gets created with the name file.json
-        '''
-        self.storage.save()
-        self.assertTrue(os.path.isfile("file.json"))
-
-    def test_save_file_read(self):
-        '''
-            Testing the contents of the files inside the file.json
-        '''
-        self.storage.save()
-        self.storage.new(self.my_model)
-
-        with open("file.json", encoding="UTF8") as fd:
-            content = json.load(fd)
-
-        self.assertTrue(isinstance(content, dict))
-
-    def test_the_type_file_content(self):
-        '''
-            testing the type of the contents inside the file.
-        '''
-        self.storage.save()
-        self.storage.new(self.my_model)
-
-        with open("file.json", encoding="UTF8") as fd:
-            content = fd.read()
-
-        self.assertIsInstance(content, str)
-
-    def test_reaload_without_file(self):
-        '''
-            Tests that nothing happens when file.json does not exists
-            and reload is called
-        '''
-
         try:
-            self.storage.reload()
-            self.assertTrue(True)
-        except BaseException:
-            self.assertTrue(False)
+            os.rename("tmp", "file.json")
+        except IOError:
+            pass
+        FileStorage._FileStorage__objects = {}
+
+    def test_storage_file_path(self):
+        """Testing file storage path"""
+        self.assertEqual(str, type(FileStorage._FileStorage__file_path))
+
+    def test_storage_isinstance(self):
+        """Testing for instanceof"""
+        self.assertIsInstance(self.storage, FileStorage)
+
+    def test_basemodel_isinstance(self):
+        """Testing model if its an instance of BaseModel"""
+        self.assertIsInstance(self.model, BaseModel)
+
+    def test_storage_instance(self):
+        """Testing models.storage as an instance of FileStorage"""
+        self.assertEqual(type(models.storage), FileStorage)
+
+    def test_all(self):
+        """Testing all method"""
+        objs = models.storage.all()
+        self.assertEqual(dict, type(objs))
+
+    def test_all_with_arg(self):
+        """Testing all method with arg"""
+        with self.assertRaises(TypeError):
+            models.storage.all(None)
+
+    def test_save(self):
+        """Testing save method"""
+        base = BaseModel()
+        models.storage.save()
+        self.assertTrue(os.path.exists("file.json"))
+
+    def test_reload(self):
+        """Testing reload method"""
+        bm = BaseModel()
+        us = User()
+        st = State()
+        pl = Place()
+        cy = City()
+        am = Amenity()
+        rv = Review()
+        models.storage.new(bm)
+        models.storage.new(us)
+        models.storage.new(st)
+        models.storage.new(pl)
+        models.storage.new(cy)
+        models.storage.new(am)
+        models.storage.new(rv)
+        models.storage.save()
+        models.storage.reload()
+        objs = FileStorage._FileStorage__objects
+        self.assertIn("BaseModel." + bm.id, objs)
+        self.assertIn("User." + us.id, objs)
+        self.assertIn("State." + st.id, objs)
+        self.assertIn("Place." + pl.id, objs)
+        self.assertIn("City." + cy.id, objs)
+        self.assertIn("Amenity." + am.id, objs)
+        self.assertIn("Review." + rv.id, objs)
+
+    def test_new(self):
+        """Testing new method"""
+        basemodel = BaseModel()
+        user = User()
+        state = State()
+        place = Place()
+        city = City()
+        amenity = Amenity()
+        review = Review()
+        models.storage.new(basemodel)
+        models.storage.new(user)
+        models.storage.new(state)
+        models.storage.new(place)
+        models.storage.new(city)
+        models.storage.new(amenity)
+        models.storage.new(review)
+        self.assertIn("BaseModel." + basemodel.id, models.storage.all().keys())
+        self.assertIn(basemodel, models.storage.all().values())
+        self.assertIn("User." + user.id, models.storage.all().keys())
+        self.assertIn(user, models.storage.all().values())
+        self.assertIn("State." + state.id, models.storage.all().keys())
+        self.assertIn(state, models.storage.all().values())
+        self.assertIn("Place." + place.id, models.storage.all().keys())
+        self.assertIn(place, models.storage.all().values())
+        self.assertIn("City." + city.id, models.storage.all().keys())
+        self.assertIn(city, models.storage.all().values())
+        self.assertIn("Amenity." + amenity.id, models.storage.all().keys())
+        self.assertIn(amenity, models.storage.all().values())
+        self.assertIn("Review." + review.id, models.storage.all().keys())
+        self.assertIn(review, models.storage.all().values())
+
+
+if __name__ == '__main__':
+    unittest.main()
