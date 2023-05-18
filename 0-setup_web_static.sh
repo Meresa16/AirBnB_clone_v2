@@ -5,7 +5,7 @@ sudo apt-get -y update
 sudo apt-get -y install nginx
 sudo ufw allow 'Nginx HTTP'
 sudo mkdir -p /data/web_static/releases/test /data/web_static/shared
-echo "<h1>Welcome to www.majete.tech</h1>" > /data/web_static/releases/test/index.html
+echo "<h1>Welcome to www.meresag.tech</h1>" > /data/web_static/releases/test/index.html
 if [ -d "/data/web_static/current" ];
 then
     echo "path /data/web_static/current exists"
